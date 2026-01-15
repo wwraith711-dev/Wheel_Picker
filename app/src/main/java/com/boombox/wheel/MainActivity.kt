@@ -44,13 +44,23 @@ fun HomeScreen() {
     }
     if (showDialog) {
         AlertDialog(
-            onDismissRequest = {},
+            onDismissRequest = { showDialog = false},
             text = {
-                //next commit :)
+                Wheel()
             },
-            confirmButton = {},
+            confirmButton = {
+                Button(
+                    onClick = { }
+                ) {
+                    Text("Done")
+                }
+            },
             dismissButton = {
-                showDialog = false
+                Button(
+                    onClick = { showDialog = false}
+                ) {
+                    Text("Cancel")
+                }
             }
         )
     }
