@@ -1,5 +1,6 @@
 package com.boombox.wheel
 
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,18 +17,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 @Composable
 fun Wheel() {
-    val state = rememberLazyListState() // remote controller for lazy Column
-    val scope = rememberCoroutineScope() // this u can say battery for ur remote Controller
+    val state = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
     val days = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-    /*
-    3) every time we open that wheel
-    we'll jump to center of that huge list to make illusion that we are infinite wheel
-     */
+
     LaunchedEffect(Unit) {
-        scope.launch { state.scrollToItem(days.size*100/2) } // auto scroll to middle
+        scope.launch { state.scrollToItem(days.size*100/2) }
+    }
+
+    //1) here we make after every scroll it center the item to center
+    LaunchedEffect(state.isScrollInProgress) {
+        if (!state.isScrollInProgress) {// after lift the finger
+            val mid = state.layoutInfo.viewportSize.height/2 // this the mid of the view part of list
+            val closetItem = state.layoutInfo.visibleItemsInfo.minByOrNull {// minimum item who has smallest distance from mid
+                abs(it.offset +(it.size/2)- mid) // distance from mid
+            }?: return@LaunchedEffect
+            scope.launch { state.scrollBy( //auto scroll it smallest distance item to center
+                (closetItem.offset +(closetItem.size/2) - mid).toFloat()
+            ) }
+        }
     }
     LazyColumn(
         state = state,
@@ -37,9 +50,7 @@ fun Wheel() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 1) we make huge list [count *100]
         items(days.size*100){ i ->
-            // 2) ofc we need to change this loop , we need to make nested loop
             val index = i % days.size
             Text(
                 modifier = Modifier
