@@ -9,13 +9,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,25 +27,13 @@ fun Wheel(
     val state = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    val centerIndex by remember {
-        derivedStateOf {
-            val layoutInfo = state.layoutInfo
-            val visibleItemsInfo = layoutInfo.visibleItemsInfo
-            if (visibleItemsInfo.isEmpty()) 0
-            else {
-                val mid = layoutInfo.viewportSize.height / 2
-                visibleItemsInfo.minByOrNull { abs(it.offset + (it.size / 2) - mid) }?.index ?: 0
-            }
-        }
-    }
-    LaunchedEffect(list) {
+    LaunchedEffect(Unit) {
         scope.launch {
             state.scrollToItem(
-                (currentIndex + list.size * 500),
+                ( currentIndex + list.size * 500),
                 (state.layoutInfo.visibleItemsInfo.first().size/2 -state.layoutInfo.viewportSize.height / 2)
             )
         }
-        selectedIndex(currentIndex)
     }
     LaunchedEffect(state.isScrollInProgress) {
         if (!state.isScrollInProgress) {
@@ -70,25 +53,7 @@ fun Wheel(
     LazyColumn(
         state = state,
         modifier = Modifier
-            .size(width = 60.dp, height = 150.dp)
-            .drawWithContent {
-                drawContent()
-                drawRect(
-                    size = Size(size.width, size.height / 2),
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black, Color.Transparent),
-                        endY = size.height / 2
-                    )
-                )
-                drawRect(
-                    topLeft = Offset(0f, size.height / 2),
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black),
-                        startY = size.height / 2,
-                        endY = size.height
-                    )
-                )
-            },
+            .size(width = 60.dp, height = 90.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -98,7 +63,7 @@ fun Wheel(
                 modifier = Modifier.padding(3.dp),
                 text = list[index],
                 fontSize = 20.sp,
-                color = if (i == centerIndex) Color.White else Color.Gray
+                color = Color.White
             )
         }
     }
@@ -107,54 +72,55 @@ fun Wheel(
 @Composable
 fun DateWheel(
     initialDateTime: LocalDateTime = LocalDateTime.now(),
-    //onDateTimeChanged: (LocalDateTime) -> Unit = {}
+    onDateTimeChanged: (LocalDateTime) -> Unit = {}
 ) {
-    var selectedYear   by remember(initialDateTime) { mutableIntStateOf(initialDateTime.year) }
-    var selectedMonth  by remember(initialDateTime) { mutableIntStateOf(initialDateTime.monthValue - 1) }
-    var selectedDay    by remember(initialDateTime) { mutableIntStateOf(initialDateTime.dayOfMonth) }
+    var selectedYear   by remember { mutableIntStateOf(initialDateTime.year) }
+    var selectedMonth  by remember { mutableIntStateOf(initialDateTime.monthValue - 1) }
+    var selectedDay    by remember { mutableIntStateOf(initialDateTime.dayOfMonth) }
 
     val years = (1900..2199).map { it.toString() }
     val months = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-
-    fun getDaysInMonth(month: Int, year: Int): Int {
-        return when (month) {
-            0, 2, 4, 6, 7, 9, 11 -> 31
-            3, 5, 8, 10 -> 30
-            1 -> {
-                if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))
-                    29
-                else
-                    28
+    val days = remember(selectedYear, selectedMonth) {
+        val getDaysInMonth: (Int, Int) -> Int = { month, year ->
+            when (month) {
+                3, 5, 8, 10 -> 30
+                1 -> if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) 29 else 28
+                else -> 31
             }
-            else -> 31
         }
+        mutableStateListOf(*(1..getDaysInMonth(selectedMonth, selectedYear)).map { it.toString() }.toTypedArray())
     }
-    val daysInCurrentMonth = getDaysInMonth(selectedMonth, selectedYear)
-    val days = (1..daysInCurrentMonth).map { it.toString() }
-
+    LaunchedEffect(selectedYear, selectedMonth, selectedDay) {
+        val dateTime = LocalDateTime.of(
+            selectedYear,
+            selectedMonth + 1,
+            selectedDay,
+            0,
+            0
+        )
+        onDateTimeChanged(dateTime)
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        Wheel(
-            list = years,
-            currentIndex = initialDateTime.year - 1900
-        ) { index ->
-            selectedYear = 1900 + index
-        }
-        Wheel(
-            list = months,
-            currentIndex = initialDateTime.monthValue - 1
-        ) { index ->
-            selectedMonth = index
-        }
-        key(days.size) {
+            Wheel(
+                list = years,
+                currentIndex = initialDateTime.year - 1900
+            ) { index ->
+                selectedYear = 1900 + index
+            }
+            Wheel(
+                list = months,
+                currentIndex = initialDateTime.monthValue - 1
+            ) { index ->
+                selectedMonth = index
+            }
             Wheel(
                 list = days,
-                currentIndex = (selectedDay - 1)
+                currentIndex = initialDateTime.dayOfMonth -1
             ) { index ->
                 selectedDay = index + 1
             }
-        }
     }
 }
